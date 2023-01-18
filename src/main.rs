@@ -1,3 +1,5 @@
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
 macro_rules! c {
     ($r:expr, $g:expr, $b:expr) => (
@@ -5,41 +7,54 @@ macro_rules! c {
     )
 }
 
+#[derive(Debug, Clone, Copy)]
 struct Colour {
     r: u8,
     g: u8,
     b: u8
 }
 
-struct McColour;
+impl Colour {
 
-impl McColour {
-    pub const Black: Colour = c!(0, 0, 0);
-    pub const DarkBlue: Colour = c!(0, 0, 170);
-    pub const DarkGreen: Colour = c!(0, 170, 0);
-    pub const DarkAqua: Colour = c!(0, 170, 170);
-    pub const DarkRed: Colour = c!(170, 0, 0);
-    pub const DarkPurple: Colour = c!(170, 0, 170);
-    pub const Gold: Colour = c!(255, 170, 0);
-    pub const Gray: Colour = c!(170, 170, 170);
-    pub const DarkGray: Colour = c!(85, 85, 85);
-    pub const Blue: Colour = c!(85, 85, 255);
-    pub const Green: Colour = c!(85, 255, 85);
-    pub const Aqua: Colour = c!(85, 255, 255);
-    pub const Red: Colour = c!(255, 85, 85);
-    pub const LightPurple: Colour = c!(255, 85, 255);
-    pub const Yellow: Colour = c!(255, 255, 85);
-    pub const White: Colour = c!(255, 255, 255);
-    pub const MinecoinGold: Colour = c!(221, 214, 5);
+    pub fn l2_norm(&self, other: Self) -> usize {
+        let dr2 = ((self.r-other.r) as usize) << 1;
+        let db2 = ((self.r-other.r) as usize) << 1;
+        let dg2 = ((self.r-other.r) as usize) << 1;
+        dr2 + db2 + dg2
+    }
+    pub fn closest_colour(&self, others: &HashMap<&'static str, Colour>) -> &'static str {
+        others.iter().map(|(k, v)| (k, v, self.l2_norm(*v))).min_by(|(_, _, c1), (_, _, c2)| c1.cmp(c2)).unwrap().0
+    }
 }
+static McColour: Lazy<HashMap<&'static str, Colour>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+    m.insert("black", c!(0, 0, 0));
+    m.insert("dark_blue", c!(0, 0, 170));
+    m.insert("dark_green", c!(0, 170, 0));
+    m.insert("dark_aqua", c!(0, 170, 170));
+    m.insert("dark_red", c!(170, 0, 0));
+    m.insert("dark_purple", c!(170, 0, 170));
+    m.insert("gold", c!(255, 170, 0));
+    m.insert("gray", c!(170, 170, 170));
+    m.insert("dark_gray", c!(85, 85, 85));
+    m.insert("blue", c!(85, 85, 255));
+    m.insert("green", c!(85, 255, 85));
+    m.insert("aqua", c!(85, 255, 255));
+    m.insert("red", c!(255, 85, 85));
+    m.insert("light_purple", c!(255, 85, 255));
+    m.insert("yellow", c!(255, 255, 85));
+    m.insert("white", c!(255, 255, 255));
+    m.insert("minecoin_gold", c!(221, 214, 5));
+    m
+});
+
+
 
 const WIDTH: usize = 76;
 const HEIGHT: usize = 56;
 
 
 fn main() {
-
-    let x = c!(0, 1, 2);
 
     println!("Hello, world!");
 }
