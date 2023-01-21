@@ -1,24 +1,32 @@
 #![allow(dead_code)]
 
-use once_cell::sync::Lazy;
-use std::collections::HashMap;
-use std::io::Cursor;
 use image::io::Reader as ImageReader;
 use image::Rgb;
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
 use std::convert::From;
+use std::io::Cursor;
+
+use std::path::PathBuf;
+
+use clap::{arg, command, value_parser, ArgAction, Command};
 
 
 macro_rules! c {
-    ($r:expr, $g:expr, $b:expr) => (
-        Colour { r: $r, g: $g, b: $b }        
-    )
+    ($r:expr, $g:expr, $b:expr) => {
+        Colour {
+            r: $r,
+            g: $g,
+            b: $b,
+        }
+    };
 }
 
 #[derive(Debug, Clone, Copy)]
 struct Colour {
     r: u8,
     g: u8,
-    b: u8
+    b: u8,
 }
 
 impl From<Rgb<u8>> for Colour {
@@ -43,7 +51,12 @@ impl Colour {
         dr2 + dg2 + db2
     }
     pub fn closest_colour(&self, others: &HashMap<&'static str, Colour>) -> Colour {
-        *others.iter().map(|(k, v)| (k, v, self.l1_norm(*v))).min_by(|(_, _, c1), (_, _, c2)| c1.cmp(c2)).unwrap().1
+        *others
+            .iter()
+            .map(|(k, v)| (k, v, self.l1_norm(*v)))
+            .min_by(|(_, _, c1), (_, _, c2)| c1.cmp(c2))
+            .unwrap()
+            .1
     }
 }
 static MC_COLOUR: Lazy<HashMap<&'static str, Colour>> = Lazy::new(|| {
@@ -68,24 +81,53 @@ static MC_COLOUR: Lazy<HashMap<&'static str, Colour>> = Lazy::new(|| {
     m
 });
 
-
-
 const WIDTH: usize = 76;
 const HEIGHT: usize = 56;
 
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let matches = command!() // requires `cargo` feature
+        .arg(
+            arg!(
+                -i --input <FILE> "Sets a custom config file"
+            ).required(true)
+        )
+        .arg(arg!(
+            -o --output <FOLDER> "Output directory name"
+        ).required(true)
+            )
+        .get_matches();
 
-fn main() -> Result<(), Box<dyn std::error::Error>>{
+    let inputvideo = matches.get_one::<PathBuf>("input").expect("not a valid path");
+    let outputpath = matches.get_one::<PathBuf>("output").expect("not a valid path");
+    
 
-    let mut img = ImageReader::open("nyan.jpg")?.decode()?.to_rgb8();
+    // ffmpeg -i input.mp4 -vf scale=76:force_original_aspect_ratio=decrease output.mp4
+    let status = std::process::Command::new("ffmpeg")
+        .arg("-i")
+        .arg(inputvideo)
+        .arg("-vf")
+        .arg("scale=76:force_original_aspect_ratio=decrease")
+        .arg("output.mp4");
+    // check status
+    //
+    // ffmpeg -i output.mp4 'images/%04d.png'
+    let status = std::process::Command::new("ffmpeg")
+        .arg("-i")
+        .arg(inputvideo)
+        .arg("images/%04d.png");
+    
 
-    img.pixels_mut().for_each(|p| {
-        let c = Colour::from(*p);
-        let Colour { r, g, b } = c.closest_colour(&MC_COLOUR);
-        *p = [r, g, b].into()
-    });
 
-    img.save("output.png")?;
-    println!("Hello, world!");
+    //let mut img = ImageReader::open(inputpic)?.decode()?.to_rgb8();
+
+    //img.pixels_mut().for_each(|p| {
+    //    let c = Colour::from(*p);
+    //    let Colour { r, g, b } = c.closest_colour(&MC_COLOUR);
+    //    *p = [r, g, b].into()
+    //});
+
+    //img.save("output.png")?;
+    //println!("Hello, world!");
 
     Ok(())
 }
