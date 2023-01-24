@@ -6,6 +6,7 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::convert::From;
 use std::io::Cursor;
+use tempdir::TempDir;
 
 use std::path::PathBuf;
 
@@ -97,24 +98,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
         .get_matches();
 
-    let inputvideo = matches.get_one::<PathBuf>("input").expect("not a valid path");
-    let outputpath = matches.get_one::<PathBuf>("output").expect("not a valid path");
+    let inputvideo = matches.get_one::<String>("input").expect("not a valid path");
+    let outputpath = matches.get_one::<String>("output").expect("not a valid path");
+
+    let inputvideo = PathBuf::from(inputvideo);
+    let inputvideo = std::fs::canonicalize(&inputvideo)?;
+    let inputvideo = inputvideo.display().to_string();
+    dbg!(&inputvideo);
     
 
+    let temp_dir = TempDir::new("mc-flipbook")?;
+    dbg!(&temp_dir);
+    std::env::set_current_dir(&temp_dir)?;
+    let output_name = "output.mp4";
+
     // ffmpeg -i input.mp4 -vf scale=76:force_original_aspect_ratio=decrease output.mp4
-    let status = std::process::Command::new("ffmpeg")
+    let output = std::process::Command::new("ffmpeg")
         .arg("-i")
-        .arg(inputvideo)
+        .arg(&inputvideo)
         .arg("-vf")
-        .arg("scale=76:force_original_aspect_ratio=decrease")
-        .arg("output.mp4");
+        .arg(format!("scale={WIDTH}:{HEIGHT}"))
+        .arg(output_name)
+        .output()?;
+
+    dbg!(&output);
+    if !output.status.success() {
+        panic!("could not scale video");
+    }
     // check status
     //
     // ffmpeg -i output.mp4 'images/%04d.png'
-    let status = std::process::Command::new("ffmpeg")
+
+    let output = std::process::Command::new("ffmpeg")
         .arg("-i")
-        .arg(inputvideo)
-        .arg("images/%04d.png");
+        .arg(output_name)
+        .arg("%d.png")
+        .output()?;
+
+    dbg!(&output);
+    if !output.status.success() {
+        panic!("could not extract frames from video");
+    }
+
     
 
 
